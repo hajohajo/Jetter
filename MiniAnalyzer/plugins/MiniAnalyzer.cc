@@ -16,7 +16,7 @@
 #include <vector>
 #include <string>
 #include <cmath>
-
+#include <boost/algorithm/clamp.hpp>
 #include <iostream>
 
 //user include files
@@ -72,24 +72,61 @@ class MiniAnalyzer : public edm::EDAnalyzer {
         ~MiniAnalyzer();
 
         int npfv, ngenv, nPF, ncPF, nnPF;
-        struct PFV {float pT,dR,dTheta, mass;};
+        struct PFV {double pT,dR,dTheta, mass;};
         static const int kMaxPF = 5000;
 
 	// Jet constituent variables
-	Float_t jetPF_pT[kMaxPF];
-	Float_t jetPF_pTrel[kMaxPF];
-	Float_t jetPF_dR[kMaxPF];
-	Float_t jetPF_dTheta[kMaxPF];
-	Float_t jetPF_mass[kMaxPF];
-	int jetPF_id[kMaxPF];
+	Float_t jetPF_chg_pT[kMaxPF];
+	Float_t jetPF_chg_pTrel[kMaxPF];
+	Float_t jetPF_chg_dR[kMaxPF];
+        Float_t jetPF_chg_dPhi[kMaxPF];
+	Float_t jetPF_chg_dTheta[kMaxPF];
+	Float_t jetPF_chg_mass[kMaxPF];
+	Float_t jetPF_chg_vtxChi2[kMaxPF];
+        Float_t	jetPF_chg_puppiW[kMaxPF];
+        Float_t	jetPF_chg_dxy[kMaxPF];
+        Float_t	jetPF_chg_dz[kMaxPF];
+        Float_t	jetPF_chg_vtxAssQ[kMaxPF];
+
+        Float_t jetPF_neu_pT[kMaxPF];
+        Float_t jetPF_neu_pTrel[kMaxPF];
+        Float_t jetPF_neu_dR[kMaxPF];
+        Float_t jetPF_neu_dPhi[kMaxPF];
+        Float_t jetPF_neu_dTheta[kMaxPF];
+        Float_t jetPF_neu_mass[kMaxPF];
+
+        Float_t jetPF_pho_pT[kMaxPF];
+        Float_t jetPF_pho_pTrel[kMaxPF];
+        Float_t jetPF_pho_dR[kMaxPF];
+        Float_t jetPF_pho_dPhi[kMaxPF];
+        Float_t jetPF_pho_dTheta[kMaxPF];
+        Float_t jetPF_pho_mass[kMaxPF];
+
+
+//	int jetPF_id[kMaxPF];
         int jetPFfromPV[kMaxPF];
 
 	// Gen particle variables
-        Float_t genPF_pT[kMaxPF];
-        Float_t genPF_dR[kMaxPF];
-        Float_t genPF_dTheta[kMaxPF];
-        Float_t genPF_mass[kMaxPF];
-	int genPF_id[kMaxPF];
+        Double_t genPF_neu_pT[kMaxPF];
+        Double_t genPF_neu_dR[kMaxPF];
+        Double_t genPF_neu_dPhi[kMaxPF];
+        Double_t genPF_neu_dTheta[kMaxPF];
+        Double_t genPF_neu_mass[kMaxPF];
+
+        Double_t genPF_pho_pT[kMaxPF];
+        Double_t genPF_pho_dR[kMaxPF];
+        Double_t genPF_pho_dPhi[kMaxPF];
+        Double_t genPF_pho_dTheta[kMaxPF];
+        Double_t genPF_pho_mass[kMaxPF];
+
+        Double_t genPF_chg_pT[kMaxPF];
+        Double_t genPF_chg_dR[kMaxPF];
+        Double_t genPF_chg_dPhi[kMaxPF];
+        Double_t genPF_chg_dTheta[kMaxPF];
+        Double_t genPF_chg_mass[kMaxPF];
+
+//	int genPF_id[kMaxPF];
+//	int genPF_charge[kMaxPF];
 
 	//Jet image variables
 	Float_t PF_pT[kMaxPF];
@@ -143,7 +180,13 @@ class MiniAnalyzer : public edm::EDAnalyzer {
 	unsigned int jetNeutralHadronMult;
 	unsigned int jetChargedMult;
 	unsigned int jetNeutralMult;
+        unsigned int jetPhotonMult;
+
 	unsigned int jetMult;
+
+	unsigned int ng_neu;
+	unsigned int ng_chg;
+        unsigned int ng_pho;
 
 	unsigned int jetLooseID;
 	unsigned int jetTightID;
@@ -166,10 +209,10 @@ class MiniAnalyzer : public edm::EDAnalyzer {
 	unsigned int isPhysG;
 	unsigned int isPhysOther;
 
-        Float_t genJetPt;
-        Float_t genJetEta;
-        Float_t genJetPhi;
-        Float_t genJetMass;
+        Double_t genJetPt;
+        Double_t genJetEta;
+        Double_t genJetPhi;
+        Double_t genJetMass;
 
         Float_t pthat;
         Float_t eventWeight;
@@ -216,7 +259,7 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig):
 
     outputFile = new TFile("QCD_jettuples_pythia8_PU.root","recreate");
     jetTree = new TTree("jetTree", "Jet tree");
-    jetTree->SetMaxTreeSize(1000000000); 	// Set max file size to around 1 gigabyte
+    jetTree->SetMaxTreeSize(500000000); 	// Set max file size to around 1 gigabyte
 
     jetTree->Branch("jetPt", &jetPt, "jetPt/F");
     jetTree->Branch("jetEta", &jetEta, "jetEta/F");
@@ -233,31 +276,73 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig):
     jetTree->Branch("jetNeutralHadronMult", &jetNeutralHadronMult, "jetNeutralHadronMult/I");
     jetTree->Branch("jetChargedMult", &jetChargedMult, "jetChargedMult/I");
     jetTree->Branch("jetNeutralMult", &jetNeutralMult, "jetNeutralMult/I");
+    jetTree->Branch("jetPhotonMult", &jetPhotonMult, "jetPhotonMult/I");
     jetTree->Branch("jetMult", &jetMult, "jetMult/I");
 
-    jetTree->Branch("jetPF_pT", &jetPF_pT, "jetPF_pT[jetMult]/F");
-    jetTree->Branch("jetPF_pTrel", &jetPF_pTrel, "jetPF_pTrel[jetMult]/F");
-    jetTree->Branch("jetPF_dR", &jetPF_dR, "jetPF_dR[jetMult]/F");
-    jetTree->Branch("jetPF_dTheta", &jetPF_dTheta, "jetPF_dTheta[jetMult]/F");
-    jetTree->Branch("jetPF_mass", &jetPF_mass, "jetPF_mass[jetMult]/F");
-    jetTree->Branch("jetPF_id", &jetPF_id, "jetPF_id[jetMult]/I");
+
+    jetTree->Branch("jetPF_chg_pT", &jetPF_chg_pT, "jetPF_chg_pT[jetChargedMult]/F");
+    jetTree->Branch("jetPF_chg_pTrel", &jetPF_chg_pTrel, "jetPF_chg_pTrel[jetChargedMult]/F");
+    jetTree->Branch("jetPF_chg_dR", &jetPF_chg_dR, "jetPF_chg_dR[jetChargedMult]/F");
+    jetTree->Branch("jetPF_chg_dPhi", &jetPF_chg_dPhi, "jetPF_chg_dPhi[jetChargedMult]/F");
+    jetTree->Branch("jetPF_chg_dTheta", &jetPF_chg_dTheta, "jetPF_chg_dTheta[jetChargedMult]/F");
+    jetTree->Branch("jetPF_chg_vtxChi2", &jetPF_chg_vtxChi2, "jetPF_chg_chi2[jetChargedMult]/F");
+    jetTree->Branch("jetPF_chg_puppiW", &jetPF_chg_puppiW, "jetPF_chg_puppiW[jetChargedMult]/F");
+    jetTree->Branch("jetPF_chg_dxy", &jetPF_chg_dxy, "jetPF_chg_dxy[jetChargedMult]/F");
+    jetTree->Branch("jetPF_chg_dz", &jetPF_chg_dz, "jetPF_chg_dz[jetChargedMult]/F");
+    jetTree->Branch("jetPF_chg_vtxAssQ", &jetPF_chg_vtxAssQ, "jetPF_chg_vtxAssQ[jetChargedMult]/F");
+
+    jetTree->Branch("jetPF_neu_pT", &jetPF_neu_pT, "jetPF_neu_pT[jetNeutralMult]/F");
+    jetTree->Branch("jetPF_neu_pTrel", &jetPF_neu_pTrel, "jetPF_neu_pTrel[jetNeutralMult]/F");
+    jetTree->Branch("jetPF_neu_dR", &jetPF_neu_dR, "jetPF_neu_dR[jetNeutralMult]/F");
+    jetTree->Branch("jetPF_neu_dPhi", &jetPF_neu_dPhi, "jetPF_neu_dPhi[jetNeutralMult]/F");
+    jetTree->Branch("jetPF_neu_dTheta", &jetPF_neu_dTheta, "jetPF_neu_dTheta[jetNeutralMult]/F");
+    jetTree->Branch("jetPF_neu_mass", &jetPF_neu_mass, "jetPF_neu_mass[jetNeutralMult]/F");
+
+    jetTree->Branch("jetPF_pho_pT", &jetPF_pho_pT, "jetPF_pho_pT[jetPhotonMult]/F");
+    jetTree->Branch("jetPF_pho_pTrel", &jetPF_pho_pTrel, "jetPF_pho_pTrel[jetPhotonMult]/F");
+    jetTree->Branch("jetPF_pho_dR", &jetPF_pho_dR, "jetPF_pho_dR[jetPhotonMult]/F");
+    jetTree->Branch("jetPF_pho_dPhi", &jetPF_pho_dPhi, "jetPF_pho_dPhi[jetPhotonMult]/F");
+    jetTree->Branch("jetPF_pho_dTheta", &jetPF_pho_dTheta, "jetPF_pho_dTheta[jetPhotonMult]/F");
+    jetTree->Branch("jetPF_pho_mass", &jetPF_pho_mass, "jetPF_pho_mass[jetPhotonMult]/F");
+
+
     jetTree->Branch("jetPFfromPV", &jetPFfromPV, "jetPFfromPV[jetMult]/I");
 
-    jetTree->Branch("ng",&ngenv,"ng/I");
+//    jetTree->Branch("jetPF_id", &jetPF_id, "jetPF_id[jetMult]/I");
 
-    jetTree->Branch("genPF_pT", &genPF_pT, "genPF_pT[ng]/F");
-    jetTree->Branch("genPF_dR", &genPF_dR, "genPF_dR[ng]/F");
-    jetTree->Branch("genPF_dTheta", &genPF_dTheta, "genPF_dTheta[ng]/F");
-    jetTree->Branch("genPF_mass", &genPF_mass, "genPF_mass[ng]/F");
-    jetTree->Branch("genPF_id", &genPF_id, "genPF_id[ng]/I");
+    jetTree->Branch("ng",&ngenv,"ng/I");
+    jetTree->Branch("ng_chg",&ng_chg,"ng_chg/I");
+    jetTree->Branch("ng_neu",&ng_neu,"ng_neu/I");
+    jetTree->Branch("ng_pho",&ng_pho,"ng_pho/I");
+
+    jetTree->Branch("genPF_chg_pT", &genPF_chg_pT, "genPF_chg_pT[ng_chg]/D");
+    jetTree->Branch("genPF_chg_dR", &genPF_chg_dR, "genPF_chg_dR[ng_chg]/D");
+    jetTree->Branch("genPF_chg_dPhi", &genPF_chg_dPhi, "genPF_chg_dPhi[ng_chg]/D");
+    jetTree->Branch("genPF_chg_dTheta", &genPF_chg_dTheta, "genPF_chg_dTheta[ng_chg]/D");
+    jetTree->Branch("genPF_chg_mass", &genPF_chg_mass, "genPF_chg_mass[ng_chg]/D");
+    jetTree->Branch("genPF_neu_pT", &genPF_neu_pT, "genPF_neu_pT[ng_neu]/D");
+    jetTree->Branch("genPF_neu_dR", &genPF_neu_dR, "genPF_neu_dR[ng_neu]/D");
+    jetTree->Branch("genPF_neu_dPhi", &genPF_neu_dPhi, "genPF_neu_dPhi[ng_neu]/D");
+    jetTree->Branch("genPF_neu_dTheta", &genPF_neu_dTheta, "genPF_neu_dTheta[ng_neu]/D");
+    jetTree->Branch("genPF_neu_mass", &genPF_neu_mass, "genPF_neu_mass[ng_neu]/D");
+    jetTree->Branch("genPF_pho_pT", &genPF_pho_pT, "genPF_pho_pT[ng_pho]/D");
+    jetTree->Branch("genPF_pho_dR", &genPF_pho_dR, "genPF_pho_dR[ng_pho]/D");
+    jetTree->Branch("genPF_pho_dPhi", &genPF_pho_dPhi, "genPF_pho_dPhi[ng_pho]/D");
+    jetTree->Branch("genPF_pho_dTheta", &genPF_pho_dTheta, "genPF_pho_dTheta[ng_pho]/D");
+    jetTree->Branch("genPF_pho_mass", &genPF_pho_mass, "genPF_pho_mass[ng_pho]/D");
+
+
+
+//    jetTree->Branch("genPF_id", &genPF_id, "genPF_id[ng]/I");
+//    jetTree->Branch("genPF_charge", &genPF_charge, "genPF_charge[ng]/I");
 
     jetTree->Branch("jetLooseID", &jetLooseID, "jetLooseID/I");
     jetTree->Branch("jetTightID", &jetTightID, "jetTightID/I");
 
-    jetTree->Branch("genJetPt", &genJetPt, "genJetPt/F");
-    jetTree->Branch("genJetEta", &genJetEta, "genJetEta/F");
-    jetTree->Branch("genJetPhi", &genJetPhi, "genJetPhi/F");
-    jetTree->Branch("genJetMass", &genJetMass, "genJetMass/F");
+    jetTree->Branch("genJetPt", &genJetPt, "genJetPt/D");
+    jetTree->Branch("genJetEta", &genJetEta, "genJetEta/D");
+    jetTree->Branch("genJetPhi", &genJetPhi, "genJetPhi/D");
+    jetTree->Branch("genJetMass", &genJetMass, "genJetMass/D");
 
     jetTree->Branch("pthat", &pthat, "pthat/F");
     jetTree->Branch("eventWeight", &eventWeight, "eventWeight/F");
@@ -409,6 +494,7 @@ MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
 	jetChargedHadronMult = j.chargedHadronMultiplicity();
 	jetNeutralHadronMult = j.neutralHadronMultiplicity();
+	jetPhotonMult = j.photonMultiplicity();
 	jetChargedMult = j.chargedMultiplicity();
 	jetNeutralMult = j.neutralMultiplicity();
 
@@ -488,7 +574,10 @@ MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
 	std::vector<reco::CandidatePtr> pfCands = j.daughterPtrVector();
 	std::sort(pfCands.begin(), pfCands.end(), [](const reco::CandidatePtr &p1, const reco::CandidatePtr &p2) {return p1->pt() > p2->pt(); });
-	int njetpf(0);
+//	int njetpf(0);
+	int njetPF_chg(0);
+	int njetPF_neu(0);
+	int njetPF_pho(0);
 
         unsigned int pfCandsSize = pfCands.size();
 	for (unsigned int i = 0; i < pfCandsSize; ++i) {
@@ -497,18 +586,44 @@ MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
                 float dPhi = deltaPhi(pf.phi(), j.phi());
                 float dY = pf.rapidity() - j.rapidity();
 
-		jetPF_pT[njetpf] = pf.pt();
-                jetPF_pTrel[njetpf] = pf.pt() / j.pt();
-                jetPF_mass[njetpf] = pf.mass();
-                jetPF_dR[njetpf] = deltaR(j.eta(), j.phi(), pf.eta(), pf.phi());
-                jetPF_dTheta[njetpf] = std::atan2(dPhi, dEta);
-		jetPF_id[njetpf] = pf.pdgId();
-                jetPFfromPV[njetpf] = pf.fromPV();
+		if(abs(pf.pdgId())==211) {
+			jetPF_chg_pT[njetPF_chg] = pf.pt();
+	                jetPF_chg_pTrel[njetPF_chg] = pf.pt() / j.pt();
+	                jetPF_chg_mass[njetPF_chg] = pf.mass();
+	                jetPF_chg_dR[njetPF_chg] = deltaR(j.eta(), j.phi(), pf.eta(), pf.phi());
+			jetPF_chg_dPhi[njetPF_chg] = dPhi;
+	                jetPF_chg_dTheta[njetPF_chg] = std::atan2(dPhi, dEta);
+			jetPF_chg_vtxChi2[njetPF_chg] = pf.vertexNormalizedChi2();
+			jetPF_chg_puppiW[njetPF_chg] = pf.puppiWeight();
+			jetPF_chg_dxy[njetPF_chg] = boost::algorithm::clamp(fabs(pf.dxy()),0,50);
+			jetPF_chg_dz[njetPF_chg] = pf.dz();
+			jetPF_chg_vtxAssQ[njetPF_chg] = pf.pvAssociationQuality();
+			++njetPF_chg;
+		}else if(abs(pf.pdgId())!=22){
+	                jetPF_neu_pT[njetPF_neu] = pf.pt();
+	                jetPF_neu_pTrel[njetPF_neu] = pf.pt() / j.pt();
+	                jetPF_neu_mass[njetPF_neu] = pf.mass();
+	                jetPF_neu_dR[njetPF_neu] = deltaR(j.eta(), j.phi(), pf.eta(), pf.phi());
+	                jetPF_neu_dPhi[njetPF_neu] = dPhi;
+	                jetPF_neu_dTheta[njetPF_neu] = std::atan2(dPhi, dEta);
+			++njetPF_neu;
+		}else{
+                      	jetPF_pho_pT[njetPF_pho] = pf.pt();
+                        jetPF_pho_pTrel[njetPF_pho] = pf.pt() / j.pt();
+                        jetPF_pho_mass[njetPF_pho] = pf.mass();
+                        jetPF_pho_dR[njetPF_pho] = deltaR(j.eta(), j.phi(), pf.eta(), pf.phi());
+                        jetPF_pho_dPhi[njetPF_pho] = dPhi;
+                        jetPF_pho_dTheta[njetPF_pho] = std::atan2(dPhi, dEta);
+                        ++njetPF_pho;
+		}
+
+//		jetPF_id[njetpf] = pf.pdgId();
+//                jetPFfromPV[njetpf] = pf.fromPV();
 
                 jetGirth += sqrt(dY*dY + dPhi*dPhi) * pf.pt()/j.pt();
-		++njetpf;
+//		++njetpf;
 	}
-	jetMult = njetpf;
+	jetMult = njetPF_chg+njetPF_neu;
 
 
         // MC genJet & genPF variables
@@ -516,7 +631,9 @@ MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
         genJetEta = 0;
         genJetPhi = 0;
         genJetMass = 0;
-        int ng(0);
+        ng_chg = 0;
+	ng_neu = 0;
+	ng_pho = 0;
 
         if(j.genJet()) {
                 const reco::GenJet* gj = j.genJet();
@@ -539,27 +656,60 @@ MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
                 for (unsigned int i = 0; i != genParticlesSize; ++i) {
                         const pat::PackedGenParticle* genParticle = dynamic_cast<const pat::PackedGenParticle*>(genParticles[i]);
 
-                        genPF_pT[ng] = genParticle->pt();
+			if(genParticle->charge() != 0) {
+	                        genPF_chg_pT[ng_chg] = genParticle->pt();
+	                        double deltaEta = (genParticle->eta()-gj->eta());
+	                        //float deltaPhi = std::fabs((*packed)[i].phi()-j.phi());
+	                        //if (deltaPhi>(M_PI)) deltaPhi-=(2*M_PI);
+	                        double DeltaPhi = deltaPhi(genParticle->phi(), gj->phi());
+	                        // later: TLorentzVector::DeltaPhi() => dPhi = pf.DeltaPhi(j);
 
-                        float deltaEta = (genParticle->eta()-gj->eta());
-                        //float deltaPhi = std::fabs((*packed)[i].phi()-j.phi());
-                        //if (deltaPhi>(M_PI)) deltaPhi-=(2*M_PI);
-                        float DeltaPhi = deltaPhi(genParticle->phi(), gj->phi());
-                        // later: TLorentzVector::DeltaPhi() => dPhi = pf.DeltaPhi(j);
+	                        genPF_chg_dR[ng_chg] = deltaR(gj->eta(), gj->phi(), genParticle->eta(), genParticle->phi());
+				genPF_chg_dPhi[ng_chg] = DeltaPhi;
+	                        genPF_chg_dTheta[ng_chg] = std::atan2(DeltaPhi, deltaEta);
+	                        genPF_chg_mass[ng_chg] = genParticle->mass();
+				++ng_chg;
+			}
+			else if(genParticle->pdgId() != 22){
+                                genPF_neu_pT[ng_neu] = genParticle->pt();
+                                double deltaEta = (genParticle->eta()-gj->eta());
+                                //float deltaPhi = std::fabs((*packed)[i].phi()-j.phi());
+                                //if (deltaPhi>(M_PI)) deltaPhi-=(2*M_PI);
+                                double DeltaPhi = deltaPhi(genParticle->phi(), gj->phi());
+                                // later: TLorentzVector::DeltaPhi() => dPhi = pf.DeltaPhi(j);
 
-                        genPF_pT[ng] = genParticle->pt();
-                        genPF_dR[ng] = deltaR(gj->eta(), gj->phi(), genParticle->eta(), genParticle->phi());
-                        genPF_dTheta[ng] = std::atan2(DeltaPhi, deltaEta);
-                        genPF_mass[ng] = genParticle->mass();
-                        genPF_id[ng] = genParticle->pdgId();
-                        ++ng;
+                                genPF_neu_dR[ng_neu] = deltaR(gj->eta(), gj->phi(), genParticle->eta(), genParticle->phi());
+                                genPF_neu_dPhi[ng_neu] = DeltaPhi;
+                                genPF_neu_dTheta[ng_neu] = std::atan2(DeltaPhi, deltaEta);
+                                genPF_neu_mass[ng_neu] = genParticle->mass();
+				++ng_neu;
+                        }
+			else{
+                              	genPF_pho_pT[ng_pho] = genParticle->pt();
+                                double deltaEta = (genParticle->eta()-gj->eta());
+                                //float deltaPhi = std::fabs((*packed)[i].phi()-j.phi());
+                                //if (deltaPhi>(M_PI)) deltaPhi-=(2*M_PI);
+                                double DeltaPhi = deltaPhi(genParticle->phi(), gj->phi());
+                                // later: TLorentzVector::DeltaPhi() => dPhi = pf.DeltaPhi(j);
+
+                                genPF_pho_dR[ng_pho] = deltaR(gj->eta(), gj->phi(), genParticle->eta(), genParticle->phi());
+                                genPF_pho_dPhi[ng_pho] = DeltaPhi;
+                                genPF_pho_dTheta[ng_pho] = std::atan2(DeltaPhi, deltaEta);
+                                genPF_pho_mass[ng_pho] = genParticle->mass();
+                                ++ng_pho;
+
+			}
+
+
+//                        genPF_id[ng] = genParticle->pdgId();
+//			genPF_charge[ng] = genParticle->charge();
+//                        ++ng;
 
                         // if ( genPF_dR[i] < 0.4 )
                         // g += TLorentzVector((*packed)[i].px(), (*packed)[i].py(), (*packed)[i].pz(), (*packed)[i].energy());
                 }
-                ngenv = ng;
+                ngenv = ng_chg+ng_neu+ng_pho;
         }
-
 
 	// Create the jet images that include particles also outside the jet
         // PF Particle loop
@@ -571,8 +721,8 @@ MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
         for (unsigned int i = 0; i != pfsSize; ++i) {
             const pat::PackedCandidate &pf = (*pfs)[i];
 
-            float deltaEta = (pf.eta()-j.eta());
-            float DeltaPhi = deltaPhi(pf.phi(),j.phi());
+            double deltaEta = (pf.eta()-j.eta());
+            double DeltaPhi = deltaPhi(pf.phi(),j.phi());
 	    //if (DeltaPhi>(M_PI)) deltaPhi-=(2*M_PI);
             // later: TLorentzVector::DeltaPhi() => dPhi = pf.DeltaPhi(j);
 
