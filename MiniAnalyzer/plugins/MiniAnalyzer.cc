@@ -475,7 +475,57 @@ MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
     std::sort(selectedJets.begin(), selectedJets.end(), higher_pT_sort());
 
     // Loop over the selected jets in pT order
-    for (unsigned int ptIdx = 0; ptIdx < selectedJets.size(); ++ptIdx) {
+    // just the highest pT jet per event until I understand how to fix this
+    unsigned int max_jets = (unsigned int)std::min((int)selectedJets.size(),1);
+//    for (unsigned int ptIdx = 0; ptIdx < selectedJets.size(); ++ptIdx) {
+    for (unsigned int ptIdx = 0; ptIdx < max_jets; ++ptIdx) {
+
+	//Clear out the entries from the vectors
+        fill(begin(jetPF_chg_pT), end(jetPF_chg_pT), 0);
+        fill(begin(jetPF_chg_pTrel), end(jetPF_chg_pTrel), 0);
+        fill(begin(jetPF_chg_dR), end(jetPF_chg_dR), 0);
+        fill(begin(jetPF_chg_dPhi), end(jetPF_chg_dPhi), 0);
+        fill(begin(jetPF_chg_dTheta), end(jetPF_chg_dTheta), 0);
+        fill(begin(jetPF_chg_mass), end(jetPF_chg_mass), 0);
+        fill(begin(jetPF_chg_vtxChi2), end(jetPF_chg_vtxChi2), 0);
+        fill(begin(jetPF_chg_puppiW), end(jetPF_chg_puppiW), 0);
+        fill(begin(jetPF_chg_dxy), end(jetPF_chg_dxy), 0);
+        fill(begin(jetPF_chg_dz), end(jetPF_chg_dz), 0);
+        fill(begin(jetPF_chg_vtxAssQ), end(jetPF_chg_vtxAssQ), 0);
+
+        fill(begin(jetPF_neu_pT), end(jetPF_neu_pT), 0);
+        fill(begin(jetPF_neu_pTrel), end(jetPF_neu_pTrel),0);
+        fill(begin(jetPF_neu_dR), end(jetPF_neu_dR), 0);
+        fill(begin(jetPF_neu_dPhi), end(jetPF_neu_dPhi), 0);
+        fill(begin(jetPF_neu_dTheta), end(jetPF_neu_dTheta), 0);
+        fill(begin(jetPF_neu_mass), end(jetPF_neu_mass), 0);
+
+        fill(begin(jetPF_pho_pT), end(jetPF_pho_pT), 0);
+        fill(begin(jetPF_pho_pTrel), end(jetPF_pho_pTrel), 0);
+        fill(begin(jetPF_pho_dR), end(jetPF_pho_dR), 0);
+        fill(begin(jetPF_pho_dPhi), end(jetPF_pho_dPhi), 0);
+        fill(begin(jetPF_pho_dTheta), end(jetPF_pho_dTheta), 0);
+        fill(begin(jetPF_pho_mass), end(jetPF_pho_mass), 0);
+	
+
+        fill(begin(genPF_chg_pT), end(genPF_chg_pT), 0);
+        fill(begin(genPF_chg_dR), end(genPF_chg_dR), 0);
+        fill(begin(genPF_chg_dPhi), end(genPF_chg_dPhi), 0);
+        fill(begin(genPF_chg_dTheta), end(genPF_chg_dTheta), 0);
+        fill(begin(genPF_chg_mass), end(genPF_chg_mass), 0);
+
+        fill(begin(genPF_neu_pT), end(genPF_neu_pT), 0);
+        fill(begin(genPF_neu_dR), end(genPF_neu_dR), 0);
+        fill(begin(genPF_neu_dPhi), end(genPF_neu_dPhi), 0);
+        fill(begin(genPF_neu_dTheta), end(genPF_neu_dTheta), 0);
+        fill(begin(genPF_neu_mass), end(genPF_neu_mass), 0);
+
+        fill(begin(genPF_pho_pT), end(genPF_pho_pT), 0);
+        fill(begin(genPF_pho_dR), end(genPF_pho_dR), 0);
+        fill(begin(genPF_pho_dPhi), end(genPF_pho_dPhi), 0);
+        fill(begin(genPF_pho_dTheta), end(genPF_pho_dTheta), 0);
+        fill(begin(genPF_pho_mass), end(genPF_pho_mass), 0);
+
 
 	JetIndexed idxJet = selectedJets[ptIdx];
 	const pat::Jet j = idxJet.jet;

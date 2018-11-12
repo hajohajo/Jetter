@@ -16,7 +16,9 @@ process.QGTagger.srcJets=cms.InputTag("slimmedJets")
 process.QGTagger.jetsLabel = cms.string("QGL_AK4PFchs")
 
 #Choose how many events to process
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10000000) )
+process.maxEvents = cms.untracked.PSet( 
+	input = cms.untracked.int32(10000000
+) )
 
 #Select the MiniAOD file to process
 # With pileup:
